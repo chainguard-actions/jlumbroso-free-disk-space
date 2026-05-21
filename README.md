@@ -8,7 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
-| v1.3.1 | [`v1.3.1`](https://github.com/chainguard-actions/jlumbroso--free-disk-space/tree/v1.3.1) | — |
+| v1.3.1 | [`v1.3.1`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.1) | — |
 
 ## Privacy
 
