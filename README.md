@@ -1,6 +1,6 @@
 # jlumbroso/free-disk-space
 
-:octocat:⚙️🗑️ A GitHub Action to free disk space on an Ubuntu runner.
+A configurable GitHub Action to free up disk space on an Ubuntu GitHub Actions runner.
 
 Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/jlumbroso/free-disk-space](https://github.com/jlumbroso/free-disk-space).
 
@@ -8,7 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
-| v1.3.1 | [`v1.3.1`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.1) | — |
+| v1.3.1 | [`v1.3.1`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.1) | [`54081f1`](https://github.com/jlumbroso/free-disk-space/commit/54081f138730dfa15788a46383842cd2f914a1be) |
 
 ## Privacy
 
