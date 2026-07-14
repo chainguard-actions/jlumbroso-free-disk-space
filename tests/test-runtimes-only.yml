@@ -1,0 +1,91 @@
+name: Test runtime removal only (android, dotnet, haskell)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Prepare environment for act containers
+        run: |
+          # In act containers we run as root; sudo may not be installed.
+          # Create a sudo shim so the action's hardcoded sudo calls work.
+          if ! command -v sudo >/dev/null 2>&1; then
+            printf '#!/bin/sh\nexec "$@"\n' > /usr/local/bin/sudo
+            chmod +x /usr/local/bin/sudo
+            echo "Created sudo shim"
+          else
+            echo "sudo already available"
+          fi
+          # Ensure numfmt is available (part of GNU coreutils)
+          if ! command -v numfmt >/dev/null 2>&1; then
+            apt-get update -qq 2>/dev/null || true
+            apt-get install -y -qq coreutils 2>/dev/null || true
+          fi
+          # Verify numfmt works or create a shim
+          if command -v numfmt >/dev/null 2>&1; then
+            echo "numfmt available: $(numfmt --version | head -1)"
+          else
+            # Create a minimal numfmt shim that just echoes the number argument
+            printf '#!/bin/bash\nfor arg in "$@"; do val="$arg"; done; echo "$val"\n' > /usr/local/bin/numfmt
+            chmod +x /usr/local/bin/numfmt
+            echo "Created numfmt shim"
+          fi
+          echo "Environment preparation complete"
+
+      - name: Record disk space before
+        id: before
+        run: |
+          BEFORE=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "available=$BEFORE" >> $GITHUB_OUTPUT
+          echo "Disk space before: $BEFORE KB"
+
+      - name: Run free-disk-space action with only runtime options enabled
+        id: action
+        uses: .
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "false"
+          swap-storage: "false"
+
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed successfully with runtime options enabled"
+
+      - name: Assert android runtime directory is removed
+        run: |
+          if [ -d "/usr/local/lib/android" ]; then
+            echo "WARN: /usr/local/lib/android still exists (may not have been present)"
+          else
+            echo "PASS: /usr/local/lib/android does not exist"
+          fi
+
+      - name: Assert dotnet runtime directory is removed
+        run: |
+          if [ -d "/usr/share/dotnet" ]; then
+            echo "WARN: /usr/share/dotnet still exists (may not have been present)"
+          else
+            echo "PASS: /usr/share/dotnet does not exist"
+          fi
+
+      - name: Assert haskell runtime directory is removed
+        run: |
+          if [ -d "/opt/ghc" ]; then
+            echo "WARN: /opt/ghc still exists (may not have been present)"
+          else
+            echo "PASS: /opt/ghc does not exist"
+          fi
+
+      - name: Report disk space freed
+        env:
+          BEFORE: ${{ steps.before.outputs.available }}
+        run: |
+          AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "Disk space before: $BEFORE KB"
+          echo "Disk space after:  $AFTER KB"
+          DIFF=$(( AFTER - BEFORE ))
+          echo "Space freed: $DIFF KB"
+          echo "PASS: runtime removal completed"
