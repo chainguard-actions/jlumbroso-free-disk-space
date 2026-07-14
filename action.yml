@@ -1,0 +1,64 @@
+name: "Free Disk Space (Ubuntu)"
+description: "A configurable GitHub Action to free up disk space on an Ubuntu GitHub Actions runner."
+# See: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#branding
+branding:
+  icon: "trash-2"
+  color: "green"
+inputs:
+  android:
+    description: "Remove Android runtime"
+    required: false
+    default: "true"
+  dotnet:
+    description: "Remove .NET runtime"
+    required: false
+    default: "true"
+  haskell:
+    description: "Remove Haskell runtime"
+    required: false
+    default: "true"
+  # option inspired by:
+  # https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
+  large-packages:
+    description: "Remove large packages"
+    required: false
+    default: "true"
+  # option inspired by:
+  # https://github.com/actions/virtual-environments/issues/2875#issuecomment-1163392159
+  tool-cache:
+    description: "Remove image tool cache"
+    required: false
+    default: "false"
+  swap-storage:
+    description: "Remove swap storage"
+    required: false
+    default: "true"
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - shell: bash
+      env:
+        INPUT_ANDROID: ${{ inputs.android }}
+        INPUT_DOTNET: ${{ inputs.dotnet }}
+        INPUT_HASKELL: ${{ inputs.haskell }}
+        INPUT_LARGE_PACKAGES: ${{ inputs.large-packages }}
+        INPUT_TOOL_CACHE: ${{ inputs.tool-cache }}
+        INPUT_SWAP_STORAGE: ${{ inputs.swap-storage }}
+      run: "\n# ======\n# MACROS\n# ======\n\n# macro to print a line of equals\n# (silly but works)\nprintSeparationLine() {\n  str=${1:=}\n  num=${2:-80}\n  counter=1\n  output=\"\"\n  while [ $counter -le $num ]\n  do\n     output=\"${output}${str}\"\n     counter=$((counter+1))\n  done\n  echo \"${output}\"\n}\n\n# macro to compute available space\n# REF: https://unix.stackexchange.com/a/42049/60849\n# REF: https://stackoverflow.com/a/450821/408734\ngetAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }\n\n# macro to make Kb human readable (assume the input is Kb)\n# REF: https://unix.stackexchange.com/a/44087/60849\nformatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }\n\n# macro to output saved space\nprintSavedSpace() {\n  saved=${1}\n  title=${2:-}\n\n  echo \"\"\n  printSeparationLine '*' 80\n  if [ ! -z \"${title}\" ]; then\n    echo \"=> ${title}: Saved $(formatByteCount $saved)\"\n  else\n    echo \"=> Saved $(formatByteCount $saved)\"\n  fi\n  printSeparationLine '*' 80\n  echo \"\"\n}\n\n# macro to print output of dh with caption\nprintDH() {\n  caption=${1:-}\n\n  printSeparationLine '=' 80\n  echo \"${caption}\"\n  echo \"\"\n  echo \"$ dh -h /\"\n  echo \"\"\n  df -h /\n  echo \"$ dh -a /\"\n  echo \"\"\n  df -a /\n  echo \"$ dh -a\"\n  echo \"\"\n  df -a\n  printSeparationLine '=' 80\n}\n\n\n\n# ======\n# SCRIPT\n# ======\n\n# Display initial disk space stats\n\nAVAILABLE_INITIAL=$(getAvailableSpace)\nAVAILABLE_ROOT_INITIAL=$(getAvailableSpace '/')\n\nprintDH \"BEFORE CLEAN-UP:\"\necho \"\"\n\n\n# Option: Remove Android library\n\nif [[ \"$INPUT_ANDROID\" == 'true' ]]; then\n  BEFORE=$(getAvailableSpace)\n  \n  sudo rm -rf /usr/local/lib/android\n\n  AFTER=$(getAvailableSpace)\n  SAVED=$((AFTER-BEFORE))\n  printSavedSpace $SAVED \"Android library\"\nfi\n\n# Option: Remove .NET runtime\n\nif [[ \"$INPUT_DOTNET\" == 'true' ]]; then\n  BEFORE=$(getAvailableSpace)\n\n  # https://github.community/t/bigger-github-hosted-runners-disk-space/17267/11\n  sudo rm -rf /usr/share/dotnet\n  \n  AFTER=$(getAvailableSpace)\n  SAVED=$((AFTER-BEFORE))\n  printSavedSpace $SAVED \".NET runtime\"\nfi\n\n# Option: Remove Haskell runtime\n\nif [[ \"$INPUT_HASKELL\" == 'true' ]]; then\n  BEFORE=$(getAvailableSpace)\n\n  sudo rm -rf /opt/ghc\n  \n  AFTER=$(getAvailableSpace)\n  SAVED=$((AFTER-BEFORE))\n  printSavedSpace $SAVED \"Haskell runtime\"\nfi\n\n# Option: Remove large packages\n# REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh\n\nif [[ \"$INPUT_LARGE_PACKAGES\" == 'true' ]]; then\n  BEFORE=$(getAvailableSpace)\n\n  sudo apt-get remove -y '^dotnet-.*'\n  sudo apt-get remove -y '^llvm-.*'\n  sudo apt-get remove -y 'php.*'\n  sudo apt-get remove -y '^mongodb-.*'\n  sudo apt-get remove -y '^mysql-.*'\n  sudo apt-get remove -y azure-cli google-cloud-sdk google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri\n  sudo apt-get autoremove -y\n  sudo apt-get clean\n  \n  AFTER=$(getAvailableSpace)\n  SAVED=$((AFTER-BEFORE))\n  printSavedSpace $SAVED \"Large misc. packages\"\nfi\n\n# Option: Remove tool cache\n# REF: https://github.com/actions/virtual-environments/issues/2875#issuecomment-1163392159\n\nif [[ \"$INPUT_TOOL_CACHE\" == 'true' ]]; then\n  BEFORE=$(getAvailableSpace)\n\n  sudo rm -rf \"$AGENT_TOOLSDIRECTORY\"\n  \n  AFTER=$(getAvailableSpace)\n  SAVED=$((AFTER-BEFORE))\n  printSavedSpace $SAVED \"Tool cache\"\nfi\n\n# Option: Remove Swap storage\n\nif [[ \"$INPUT_SWAP_STORAGE\" == 'true' ]]; then\n  BEFORE=$(getAvailableSpace)\n\n  sudo swapoff -a\n  sudo rm -f /mnt/swapfile\n  free -h\n  \n  AFTER=$(getAvailableSpace)\n  SAVED=$((AFTER-BEFORE))\n  printSavedSpace $SAVED \"Swap storage\"\nfi\n\n\n\n# Output saved space statistic\n\nAVAILABLE_END=$(getAvailableSpace)\nAVAILABLE_ROOT_END=$(getAvailableSpace '/')\n\necho \"\"\nprintDH \"AFTER CLEAN-UP:\"\n\necho \"\"\necho \"\"\n\necho \"/dev/root:\"\nprintSavedSpace $((AVAILABLE_ROOT_END - AVAILABLE_ROOT_INITIAL))\necho \"overall:\"\nprintSavedSpace $((AVAILABLE_END - AVAILABLE_INITIAL))\n"

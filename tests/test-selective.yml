@@ -1,0 +1,47 @@
+name: Test selective cleanup (android + dotnet only)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Record disk space before
+        run: |
+          echo "Disk space before:"
+          df -h /
+
+      - name: Run free-disk-space action with only android and dotnet enabled
+        id: action
+        uses: .
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "false"
+          large-packages: "false"
+          tool-cache: "false"
+          swap-storage: "false"
+
+      - name: Assert action completed and paths are absent
+        run: |
+          echo "Disk space after:"
+          df -h /
+
+          # Android library should be removed (or was never present)
+          if [ -d "/usr/local/lib/android" ]; then
+            echo "FAIL: /usr/local/lib/android still exists after android=true"
+            exit 1
+          else
+            echo "PASS: /usr/local/lib/android is absent"
+          fi
+
+          # .NET runtime should be removed (or was never present)
+          if [ -d "/usr/share/dotnet" ]; then
+            echo "FAIL: /usr/share/dotnet still exists after dotnet=true"
+            exit 1
+          else
+            echo "PASS: /usr/share/dotnet is absent"
+          fi
+
+          echo "PASS: selective cleanup completed successfully"

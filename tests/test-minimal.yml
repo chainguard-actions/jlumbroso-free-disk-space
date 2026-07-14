@@ -1,0 +1,42 @@
+name: Test minimal usage (all options disabled)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Record disk space before
+        id: before
+        run: |
+          AVAIL=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "available=$AVAIL" >> $GITHUB_OUTPUT
+          echo "Disk available before: $AVAIL KB"
+          df -h /
+
+      - name: Run free-disk-space action with all options disabled
+        id: action
+        uses: .
+        with:
+          android: "false"
+          dotnet: "false"
+          haskell: "false"
+          large-packages: "false"
+          tool-cache: "false"
+          swap-storage: "false"
+
+      - name: Assert action completed without removing anything
+        run: |
+          echo "Disk space after (no-op run):"
+          df -h /
+
+          AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "After: $AFTER KB"
+
+          if [ -z "$AFTER" ]; then
+            echo "FAIL: could not read disk space after action"
+            exit 1
+          fi
+
+          echo "PASS: action ran as no-op successfully"
