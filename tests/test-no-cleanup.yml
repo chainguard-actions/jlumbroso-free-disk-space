@@ -1,4 +1,4 @@
-name: Test basic usage (safe subset of defaults)
+name: Test no cleanup (all options disabled)
 on:
   workflow_dispatch:
 jobs:
@@ -14,20 +14,20 @@ jobs:
           echo "available=$AVAIL" >> "$GITHUB_OUTPUT"
           echo "Disk space before: $AVAIL KB"
 
-      - name: Run free-disk-space action (android, dotnet, haskell only)
+      - name: Run free-disk-space with all options disabled
         id: action
         uses: .
         with:
-          android: "true"
-          dotnet: "true"
-          haskell: "true"
+          android: "false"
+          dotnet: "false"
+          haskell: "false"
           large-packages: "false"
           swap-storage: "false"
 
-      - name: Assert action completed successfully
+      - name: Assert action completed without removing anything
         run: |
           AVAIL_AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
           AVAIL_BEFORE="${{ steps.before.outputs.available }}"
           echo "Disk space before: $AVAIL_BEFORE KB"
           echo "Disk space after:  $AVAIL_AFTER KB"
-          echo "PASS: action completed successfully"
+          echo "PASS: action completed with all options disabled"

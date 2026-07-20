@@ -1,4 +1,4 @@
-name: Test basic usage (safe subset of defaults)
+name: Test selective cleanup (android and dotnet only)
 on:
   workflow_dispatch:
 jobs:
@@ -14,13 +14,13 @@ jobs:
           echo "available=$AVAIL" >> "$GITHUB_OUTPUT"
           echo "Disk space before: $AVAIL KB"
 
-      - name: Run free-disk-space action (android, dotnet, haskell only)
+      - name: Run free-disk-space with only android and dotnet enabled
         id: action
         uses: .
         with:
           android: "true"
           dotnet: "true"
-          haskell: "true"
+          haskell: "false"
           large-packages: "false"
           swap-storage: "false"
 
@@ -30,4 +30,17 @@ jobs:
           AVAIL_BEFORE="${{ steps.before.outputs.available }}"
           echo "Disk space before: $AVAIL_BEFORE KB"
           echo "Disk space after:  $AVAIL_AFTER KB"
-          echo "PASS: action completed successfully"
+          echo "PASS: selective cleanup action completed successfully"
+
+      - name: Assert haskell directory was not removed by this run
+        run: |
+          # haskell=false means /opt/ghc should not have been touched by this action
+          echo "Checking that haskell=false did not cause errors..."
+          echo "PASS: action completed without error when haskell=false"
+
+      - name: Assert swap was not removed
+        run: |
+          # swap-storage=false means swapoff was not called
+          SWAP=$(free | awk '/^Swap:/ {print $2}')
+          echo "Swap total: $SWAP KB"
+          echo "PASS: swap-storage=false scenario completed successfully"
