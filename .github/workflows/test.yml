@@ -6,6 +6,7 @@ permissions: {}
 jobs:
   free-disk-space:
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       # If there is a problem with this GitHub Actions, this step will fail
       - name: Free Disk Space

@@ -11,11 +11,10 @@ jobs:
         id: before
         run: |
           AVAIL=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
-          echo "available=$AVAIL" >> $GITHUB_OUTPUT
+          echo "available=$AVAIL" >> "$GITHUB_OUTPUT"
           echo "Disk available before: $AVAIL KB"
-          df -h /
 
-      - name: Run free-disk-space action (android + dotnet + haskell only)
+      - name: Run free-disk-space action (rm-based options only, no apt-get or swapoff)
         id: action
         uses: .
         with:
@@ -26,14 +25,13 @@ jobs:
           tool-cache: "false"
           swap-storage: "false"
 
-      - name: Assert action completed and disk space is readable
+      - name: Assert action completed and filesystem is intact
         run: |
-          echo "Action completed successfully"
-          df -h /
+          echo "Action completed successfully (exit 0)"
           AVAIL=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
           echo "Disk available after: $AVAIL KB"
           if [ -z "$AVAIL" ]; then
-            echo "FAIL: could not read disk space after action"
+            echo "FAIL: could not read available disk space"
             exit 1
           fi
-          echo "PASS: action ran to completion"
+          echo "PASS: action ran without error and filesystem is readable"

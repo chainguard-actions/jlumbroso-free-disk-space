@@ -11,11 +11,10 @@ jobs:
         id: before
         run: |
           AVAIL=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
-          echo "available=$AVAIL" >> $GITHUB_OUTPUT
+          echo "available=$AVAIL" >> "$GITHUB_OUTPUT"
           echo "Disk available before: $AVAIL KB"
-          df -h /
 
-      - name: Run free-disk-space action with all options disabled
+      - name: Run free-disk-space action with all options disabled (no-op)
         id: action
         uses: .
         with:
@@ -26,17 +25,20 @@ jobs:
           tool-cache: "false"
           swap-storage: "false"
 
-      - name: Assert action completed without removing anything
+      - name: Assert action completed successfully with no-op
         run: |
-          echo "Disk space after (no-op run):"
-          df -h /
+          echo "Action completed with all options disabled (no-op)"
+          echo "PASS: no-op run completed without error"
 
+      - name: Assert disk space is still readable and filesystem intact
+        env:
+          BEFORE: ${{ steps.before.outputs.available }}
+        run: |
           AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
-          echo "After: $AFTER KB"
-
+          echo "Disk available before: $BEFORE KB"
+          echo "Disk available after:  $AFTER KB"
           if [ -z "$AFTER" ]; then
-            echo "FAIL: could not read disk space after action"
+            echo "FAIL: could not read available disk space after no-op run"
             exit 1
           fi
-
-          echo "PASS: action ran as no-op successfully"
+          echo "PASS: filesystem intact after no-op run"

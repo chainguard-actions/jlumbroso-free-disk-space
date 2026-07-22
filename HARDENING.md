@@ -8,7 +8,7 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
 Action **jlumbroso--free-disk-space/v1.2.0** was hardened automatically. 9 finding(s) were identified and resolved across 1 iteration(s).
 
@@ -16,20 +16,27 @@ Action **jlumbroso--free-disk-space/v1.2.0** was hardened automatically. 9 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a): Six `${{ inputs.* }}` expressions are interpolated directly inside a `run:` shell command string in action.yml. The inputs `android`, `dotnet`, `haskell`, `large-packages`, `tool-cache`, and `swap-storage` are each used in `if [[ ${{ inputs.X }} == 'true' ]]` conditions. Because YAML template substitution happens before the shell sees the string, a caller supplying a crafted value (e.g. `true ]]; malicious_command; if [[ true`) can inject arbitrary shell commands. All six occurrences are in the same composite-action `run:` step. The fix is to map each input to an env var and reference the env var (double-quoted) inside the shell script instead.
+Sub-rule (a): Six `${{ inputs.* }}` expressions are directly interpolated inside a `run:` shell block in action.yml. The YAML template engine substitutes these values before the shell parses the command, so an attacker-controlled input value can break out of the `[[ ... == 'true' ]]` comparison context and inject arbitrary shell commands. Offending lines:
+- `if [[ ${{ inputs.android }} == 'true' ]];` (line 119)
+- `if [[ ${{ inputs.dotnet }} == 'true' ]];` (line 130)
+- `if [[ ${{ inputs.haskell }} == 'true' ]];` (line 141)
+- `if [[ ${{ inputs.large-packages }} == 'true' ]];` (line 152)
+- `if [[ ${{ inputs.tool-cache }} == 'true' ]];` (line 165)
+- `if [[ ${{ inputs.swap-storage }} == 'true' ]];` (line 176)
+Fix: move each input into an `env:` variable and reference it as a quoted shell variable, e.g. `if [[ "$ANDROID" == 'true' ]];`.
 
 Locations:
 
-- `action.yml:113`
-- `action.yml:123`
-- `action.yml:133`
-- `action.yml:144`
-- `action.yml:158`
-- `action.yml:167`
+- `action.yml:119`
+- `action.yml:130`
+- `action.yml:141`
+- `action.yml:152`
+- `action.yml:165`
+- `action.yml:176`
 
 ### unpinned-uses (severity: high)
 
-The workflow references `jlumbroso/free-disk-space@main` — a mutable branch name rather than a pinned 40-character commit SHA. If the referenced repository is compromised or the branch is force-pushed, the workflow will silently execute attacker-controlled code. Pin to a full SHA, e.g. `jlumbroso/free-disk-space@<40-char-sha> # main`.
+The workflow uses `jlumbroso/free-disk-space@main`, which is a mutable branch reference rather than an immutable 40-character hex commit SHA. A supply-chain attacker who can push to that branch can change what code runs in this workflow. Pin to a full SHA, e.g. `uses: jlumbroso/free-disk-space@<40-char-sha> # main`.
 
 Locations:
 
@@ -37,7 +44,7 @@ Locations:
 
 ### missing-permissions (severity: medium)
 
-The workflow file `.github/workflows/test.yml` has no top-level `permissions:` key and no job-level `permissions:` key on the `free-disk-space` job. Without an explicit permissions block the job inherits the repository's default token permissions, which may be broader than necessary. Add a `permissions: {}` block (or the minimal required scopes) at the top level or on the job.
+The workflow file test.yml has no top-level `permissions:` key and the job `free-disk-space` also has no job-level `permissions:` key. Without explicit permissions, the workflow inherits the repository default (often `write-all` for private repos or `read-all` for public repos), granting more access than necessary. Add a minimal `permissions:` block, e.g. `permissions: {}` or `permissions: read-all` at the top level, and restrict further at the job level.
 
 Locations:
 
@@ -99,5 +106,8 @@ Locations:
 
 **Notes:**
 
-Fixed all findings in action.yml and .github/workflows/test.yml: (1) Moved all six ${{ inputs.* }} expressions from the run: shell script into an env: block on the step, replacing them with double-quoted $VAR_NAME references in the shell to prevent script injection. (2) Pinned jlumbroso/free-disk-space@main to full SHA 54081f138730dfa15788a46383842cd2f914a1be with a # main comment. (3) Added permissions: {} at the top level of test.yml.
+Fixed all findings in action.yml and .github/workflows/test.yml:
+1. script-injection / static-inline-injection (action.yml): Added an `env:` block to the composite action step mapping all six inputs (android, dotnet, haskell, large-packages, tool-cache, swap-storage) to environment variables (INPUT_ANDROID, INPUT_DOTNET, INPUT_HASKELL, INPUT_LARGE_PACKAGES, INPUT_TOOL_CACHE, INPUT_SWAP_STORAGE). Replaced all six `${{ inputs.* }}` interpolations in the `run:` shell block with quoted `"$INPUT_*"` variable references.
+2. unpinned-uses (.github/workflows/test.yml): Pinned `jlumbroso/free-disk-space@main` to the full commit SHA `54081f138730dfa15788a46383842cd2f914a1be` with a `# main` comment.
+3. missing-permissions (.github/workflows/test.yml): Added `permissions: {}` at both the top-level workflow and job level to enforce least-privilege.
 
