@@ -8,25 +8,41 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
-Action **jlumbroso--free-disk-space/v1.3.1** was hardened automatically. 8 finding(s) were identified and resolved across 1 iteration(s).
+Action **jlumbroso--free-disk-space/v1.3.1** was hardened automatically. 10 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Sub-rule (a): The single `run:` block in action.yml directly interpolates seven `${{ inputs.* }}` expressions inside shell `if [[ ... ]]` conditions without routing them through env vars. Before the shell ever sees the command, GitHub Actions performs YAML template substitution, inserting the raw input value into the shell string. A caller supplying a crafted value (e.g., `true ]]; then malicious_cmd; if [[ true`) can break out of the condition and execute arbitrary commands. Affected lines: `if [[ ${{ inputs.android }} == 'true' ]]`, `if [[ ${{ inputs.dotnet }} == 'true' ]]`, `if [[ ${{ inputs.haskell }} == 'true' ]]`, `if [[ ${{ inputs.large-packages }} == 'true' ]]`, `if [[ ${{ inputs.docker-images }} == 'true' ]]`, `if [[ ${{ inputs.tool-cache }} == 'true' ]]`, `if [[ ${{ inputs.swap-storage }} == 'true' ]]`. Fix: move each input into an `env:` variable and reference the env var (double-quoted) in the shell condition instead.
+All 7 `inputs.*` values are directly interpolated via `${{ inputs.* }}` expressions inside the single `run:` shell block in action.yml (rule a). Before the shell executes, GitHub Actions substitutes the raw input string into the script text, allowing a caller to inject arbitrary shell metacharacters. Affected lines use patterns like: `if [[ ${{ inputs.android }} == 'true' ]]; then`, `if [[ ${{ inputs.dotnet }} == 'true' ]]; then`, `if [[ ${{ inputs.haskell }} == 'true' ]]; then`, `if [[ ${{ inputs.large-packages }} == 'true' ]]; then`, `if [[ ${{ inputs.docker-images }} == 'true' ]]; then`, `if [[ ${{ inputs.tool-cache }} == 'true' ]]; then`, and `if [[ ${{ inputs.swap-storage }} == 'true' ]]; then`. Fix: move each input into an `env:` variable and reference it as a quoted shell variable, e.g. `if [[ "$INPUT_ANDROID" == 'true' ]]; then`.
 
 Locations:
 
 - `action.yml:113`
-- `action.yml:122`
-- `action.yml:132`
-- `action.yml:143`
-- `action.yml:163`
-- `action.yml:172`
-- `action.yml:181`
+- `action.yml:124`
+- `action.yml:135`
+- `action.yml:147`
+- `action.yml:185`
+- `action.yml:197`
+- `action.yml:210`
+
+### unpinned-uses (severity: high)
+
+The workflow references `jlumbroso/free-disk-space@main`, which is a mutable branch name rather than an immutable 40-character commit SHA. A compromised or force-pushed branch could silently replace the action with malicious code. Pin to a full SHA, e.g. `jlumbroso/free-disk-space@<40-char-sha> # main`.
+
+Locations:
+
+- `.github/workflows/test.yml:10`
+
+### missing-permissions (severity: medium)
+
+The workflow file has no top-level `permissions:` key and the only job (`free-disk-space`) also has no job-level `permissions:` key. Without explicit permissions, the job inherits the repository default (often `write` for the GITHUB_TOKEN), granting broader access than necessary. Add a minimal `permissions:` block, e.g. `permissions: {}` or `permissions: contents: read`.
+
+Locations:
+
+- `.github/workflows/test.yml:1`
 
 ### static-inline-injection (severity: high)
 
@@ -88,9 +104,9 @@ Locations:
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, static-inline-injection
+**Fixes applied:** script-injection, static-inline-injection, unpinned-uses, missing-permissions
 
 **Notes:**
 
-Added an env: block to the single composite step in action.yml mapping all seven inputs to environment variables (INPUT_ANDROID, INPUT_DOTNET, INPUT_HASKELL, INPUT_LARGE_PACKAGES, INPUT_DOCKER_IMAGES, INPUT_TOOL_CACHE, INPUT_SWAP_STORAGE). Replaced all seven ${{ inputs.* }} expressions in the run: shell script with double-quoted env var references (e.g., "$INPUT_ANDROID"), eliminating the script injection vulnerability where crafted input values could break out of the [[ ... ]] conditions and execute arbitrary commands.
+Fixed all 10 findings across 2 files: (1) In action.yml, added an env: block to the composite step mapping all 7 inputs (android, dotnet, haskell, large-packages, docker-images, tool-cache, swap-storage) to environment variables (INPUT_ANDROID, INPUT_DOTNET, INPUT_HASKELL, INPUT_LARGE_PACKAGES, INPUT_DOCKER_IMAGES, INPUT_TOOL_CACHE, INPUT_SWAP_STORAGE), and replaced all 7 `${{ inputs.* }}` inline expressions in the run: block with quoted `"$INPUT_*"` shell variable references. (2) In .github/workflows/test.yml, pinned `jlumbroso/free-disk-space@main` to the full commit SHA `54081f138730dfa15788a46383842cd2f914a1be # main`, and added `permissions: {}` at the workflow top level to enforce least-privilege.
 

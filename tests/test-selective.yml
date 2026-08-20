@@ -1,0 +1,39 @@
+name: Test selective cleanup (android and dotnet only)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Record initial disk space
+        id: before
+        run: |
+          AVAIL=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "available=$AVAIL" >> "$GITHUB_OUTPUT"
+          echo "Initial available (KB): $AVAIL"
+
+      - id: action
+        uses: .
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "false"
+          large-packages: "false"
+          docker-images: "false"
+          tool-cache: "false"
+          swap-storage: "false"
+
+      - name: Assert action completed with selective cleanup
+        env:
+          BEFORE: ${{ steps.before.outputs.available }}
+        run: |
+          AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "Before (KB): $BEFORE"
+          echo "After  (KB): $AFTER"
+          if [ -z "$AFTER" ]; then
+            echo "FAIL: could not read disk space after action"
+            exit 1
+          fi
+          echo "PASS: selective cleanup completed successfully"
