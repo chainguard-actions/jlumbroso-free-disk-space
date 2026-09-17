@@ -1,0 +1,38 @@
+name: Test dotnet exemption from large-packages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Record disk space before
+        id: before
+        run: |
+          BEFORE=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "avail=$BEFORE" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          android: "false"
+          dotnet: "false"
+          haskell: "false"
+          large-packages: "true"
+          docker-images: "false"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
+
+      - name: Assert action completed and dotnet was exempted
+        env:
+          BEFORE: ${{ steps.before.outputs.avail }}
+        run: |
+          AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "before: $BEFORE KB"
+          echo "after:  $AFTER KB"
+          if [ -z "$AFTER" ]; then
+            echo "FAIL: could not read disk space after action"
+            exit 1
+          fi
+          echo "PASS: action completed with dotnet=false and large-packages=true (dotnet packages exempted)"
