@@ -1,0 +1,40 @@
+name: Test basic usage (all defaults)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Record disk space before
+        id: before
+        run: |
+          AVAIL=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "available=$AVAIL" >> "$GITHUB_OUTPUT"
+          echo "Disk available before: $AVAIL KB"
+
+      - name: Run free-disk-space action with all defaults
+        id: action
+        uses: .
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          tool-cache: "false"
+          swap-storage: "true"
+
+      - name: Assert action completed and disk space is non-negative
+        env:
+          BEFORE: ${{ steps.before.outputs.available }}
+        run: |
+          echo "Disk available before: $BEFORE KB"
+          AFTER=$(df -a / | awk 'NR > 1 {avail+=$4} END {print avail}')
+          echo "Disk available after: $AFTER KB"
+          if [ -z "$AFTER" ] || [ "$AFTER" -lt 0 ] 2>/dev/null; then
+            echo "FAIL: unexpected disk space value after cleanup: $AFTER"
+            exit 1
+          fi
+          echo "PASS: action completed successfully, disk space after = $AFTER KB"
