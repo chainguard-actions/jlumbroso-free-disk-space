@@ -6,13 +6,13 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v1.0.0 | [`v1.0.0`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.0.0) | [`c73e8a3`](https://github.com/jlumbroso/free-disk-space/commit/c73e8a31a9590d327e21a81bc51dbb6d111e0776) |
-| v1.2.0 | [`v1.2.0`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.2.0) | [`76866db`](https://github.com/jlumbroso/free-disk-space/commit/76866dbe54312617f00798d1762df7f43def6e5c) |
-| v1.3.1 | [`v1.3.1`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.1) | [`54081f1`](https://github.com/jlumbroso/free-disk-space/commit/54081f138730dfa15788a46383842cd2f914a1be) |
-| v1.3.2 | [`v1.3.2`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.2) | [`3f13fea`](https://github.com/jlumbroso/free-disk-space/commit/3f13feab2962a87273d379ebc36ea159527e6cc9) |
-| v2.0.0 | [`v2.0.0`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v2.0.0) | [`ceedf09`](https://github.com/jlumbroso/free-disk-space/commit/ceedf095f4ec1a097402bc6bd80831f2e1a6fde6) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| v1.0.0 | [`v1.0.0`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.0.0) | [`c73e8a3`](https://github.com/jlumbroso/free-disk-space/commit/c73e8a31a9590d327e21a81bc51dbb6d111e0776) | [`HARDENING.md`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/blob/v1.0.0/HARDENING.md) |
+| v1.2.0 | [`v1.2.0`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.2.0) | [`76866db`](https://github.com/jlumbroso/free-disk-space/commit/76866dbe54312617f00798d1762df7f43def6e5c) | [`HARDENING.md`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/blob/v1.2.0/HARDENING.md) |
+| v1.3.1 | [`v1.3.1`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.1) | [`54081f1`](https://github.com/jlumbroso/free-disk-space/commit/54081f138730dfa15788a46383842cd2f914a1be) | [`HARDENING.md`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/blob/v1.3.1/HARDENING.md) |
+| v1.3.2 | [`v1.3.2`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v1.3.2) | [`3f13fea`](https://github.com/jlumbroso/free-disk-space/commit/3f13feab2962a87273d379ebc36ea159527e6cc9) | [`HARDENING.md`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/blob/v1.3.2/HARDENING.md) |
+| v2.0.0 | [`v2.0.0`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/tree/v2.0.0) | [`ceedf09`](https://github.com/jlumbroso/free-disk-space/commit/ceedf095f4ec1a097402bc6bd80831f2e1a6fde6) | [`HARDENING.md`](https://github.com/chainguard-actions/jlumbroso-free-disk-space/blob/v2.0.0/HARDENING.md) |
 
 ## Privacy
 
